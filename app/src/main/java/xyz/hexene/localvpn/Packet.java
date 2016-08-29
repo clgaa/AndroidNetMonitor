@@ -57,7 +57,9 @@ public class Packet
         sb.append("ip4Header=").append(ip4Header);
         if (isTCP) sb.append(", tcpHeader=").append(tcpHeader);
         else if (isUDP) sb.append(", udpHeader=").append(udpHeader);
-        sb.append(", payloadSize=").append(backingBuffer.limit() - backingBuffer.position());
+        if(null != backingBuffer) {
+            sb.append(", payloadSize=").append(backingBuffer.limit() - backingBuffer.position());
+        }
         sb.append('}');
         return sb.toString();
     }

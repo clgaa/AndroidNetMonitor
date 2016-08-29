@@ -32,7 +32,7 @@ import xyz.hexene.localvpn.TCB.TCBStatus;
 public class TCPInput implements Runnable
 {
     private static final String TAG = TCPInput.class.getSimpleName();
-    private static final int HEADER_SIZE = Packet.IP4_HEADER_SIZE + Packet.TCP_HEADER_SIZE;
+    public static final int HEADER_SIZE = Packet.IP4_HEADER_SIZE + Packet.TCP_HEADER_SIZE;
 
     private ConcurrentLinkedQueue<ByteBuffer> outputQueue;
     private Selector selector;
@@ -131,10 +131,28 @@ public class TCPInput implements Runnable
             try
             {
                 readBytes = inputChannel.read(receiveBuffer);
+//                readBytes = inputChannel.read(mBuffer);
+                if(readBytes > 1) {
+                    Log.d("chenlongrcv", "=============RCV   begin===========");
+                    Log.d("chenlongrcv", tcb.ipAndPort);
+                    try {
+                        byte[] b = new byte[readBytes];
+                        for (int i = 0; i < readBytes; i++) {
+                            b[i] = receiveBuffer.get(i + HEADER_SIZE);
+                            Log.d("chenlongrcv", "" + b[i]);
+                        }
+                        String payloadText = new String(b);
+                        Log.d("chenlongrcv", payloadText);
+                    } catch (Exception e) {
+                        Log.d("chenlongrcv", e.toString());
+                    }
+
+                }
             }
             catch (IOException e)
             {
                 Log.e(TAG, "Network read error: " + tcb.ipAndPort, e);
+                Log.d("chenlongrcv", "Network read error: " + tcb.ipAndPort, e);
                 referencePacket.updateTCPBuffer(receiveBuffer, (byte) Packet.TCPHeader.RST, 0, tcb.myAcknowledgementNum, 0);
                 outputQueue.offer(receiveBuffer);
                 TCB.closeTCB(tcb);
@@ -160,6 +178,7 @@ public class TCPInput implements Runnable
             else
             {
                 // XXX: We should ideally be splitting segments by MTU/MSS, but this seems to work without
+
                 referencePacket.updateTCPBuffer(receiveBuffer, (byte) (Packet.TCPHeader.PSH | Packet.TCPHeader.ACK),
                         tcb.mySequenceNum, tcb.myAcknowledgementNum, readBytes);
                 tcb.mySequenceNum += readBytes; // Next sequence number

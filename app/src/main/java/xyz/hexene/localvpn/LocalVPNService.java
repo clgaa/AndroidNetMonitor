@@ -41,6 +41,10 @@ public class LocalVPNService extends VpnService
     private static final String VPN_ADDRESS = "10.0.0.2"; // Only IPv4 support for now
     private static final String VPN_ROUTE = "0.0.0.0"; // Intercept everything
 
+    private String iplist = "219.133.60.160|14.17.41.181|120.198.203.174|183.232.93.154" +
+            "|163.177.71.185|163.177.89.162|101.227.169.160|140.207.123.156|117.185.24.113|101.226.127.155" +
+            "|140.207.186.158|117.185.30.170";
+
     public static final String BROADCAST_VPN_STATE = "xyz.hexene.localvpn.VPN_STATE";
 
     private static boolean isRunning = false;
@@ -96,7 +100,10 @@ public class LocalVPNService extends VpnService
         {
             Builder builder = new Builder();
             builder.addAddress(VPN_ADDRESS, 32);
-            builder.addRoute(VPN_ROUTE, 0);
+            String[] ips = iplist.split("\\|");
+            for(String ip : ips) {
+                builder.addRoute(ip, 32);
+            }
             vpnInterface = builder.setSession(getString(R.string.app_name)).setConfigureIntent(pendingIntent).establish();
         }
     }
@@ -201,6 +208,7 @@ public class LocalVPNService extends VpnService
                         }
                         else if (packet.isTCP())
                         {
+//                            Log.d("chenlong", packet.toString());
                             deviceToNetworkTCPQueue.offer(packet);
                         }
                         else

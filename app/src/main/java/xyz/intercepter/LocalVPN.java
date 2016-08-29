@@ -27,6 +27,8 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import xyz.hexene.localvpn.LocalVPNService;
 import xyz.hexene.localvpn.R;
 
@@ -36,6 +38,8 @@ public class LocalVPN extends ActionBarActivity
     private static final int VPN_REQUEST_CODE = 0x0F;
 
     private boolean waitingForVPNStart;
+    private HttpInterceptor interceptor;
+
 
     private BroadcastReceiver vpnStateReceiver = new BroadcastReceiver()
     {
@@ -44,8 +48,10 @@ public class LocalVPN extends ActionBarActivity
         {
             if (LocalVPNService.BROADCAST_VPN_STATE.equals(intent.getAction()))
             {
-                if (intent.getBooleanExtra("running", false))
+                if (intent.getBooleanExtra("running", false)) {
                     waitingForVPNStart = false;
+                    interceptor.startIntercept();
+                }
             }
         }
     };
@@ -67,6 +73,9 @@ public class LocalVPN extends ActionBarActivity
         waitingForVPNStart = false;
         LocalBroadcastManager.getInstance(this).registerReceiver(vpnStateReceiver,
                 new IntentFilter(LocalVPNService.BROADCAST_VPN_STATE));
+        ConcurrentHashMap<String, String> api = new ConcurrentHashMap<>();
+        api.put("dSetOnlineStatus", "{\"code\":304,\"msg\":\"CACHED\",\"data\":[],\"ns\":\"gulf_driver\",\"key\":\"dd9a7bfb6ccbe1a73314b4e88ab9a5f\",\"md5\":\"\"}");
+        interceptor = new HttpInterceptor("api.udache.com", api);
     }
 
     private void startVPN()

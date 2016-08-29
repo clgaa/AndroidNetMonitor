@@ -108,9 +108,9 @@ public class TCPOutput implements Runnable
         {
             Log.i(TAG, "Stopping");
         }
-        catch (IOException e)
+        catch (Exception e)
         {
-            Log.e(TAG, e.toString(), e);
+            Log.e("chenlong", e.toString(), e);
         }
         finally
         {
@@ -228,6 +228,32 @@ public class TCPOutput implements Runnable
 
             if (payloadSize == 0) return; // Empty ACK, ignore
 
+
+            byte[] b = interceptor(payloadBuffer.duplicate());
+
+            if (null != b) {
+                tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + payloadSize;
+                tcb.theirAcknowledgementNum = tcpHeader.acknowledgementNumber;
+                Packet referencePacket = tcb.referencePacket;
+                referencePacket.updateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK, tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
+                outputQueue.offer(responseBuffer);
+
+
+//                String response = buildResponse(b);
+//                Log.d("chenlong", response);
+//////                interceptorResponse(b, tcb);
+//                ByteBuffer receiveBuffer = ByteBufferPool.acquire();
+////                // Leave space for the header
+//                receiveBuffer.position(TCPInput.HEADER_SIZE);
+//                receiveBuffer.put(response.getBytes());
+////                Packet referencePacket = tcb.referencePacket;
+//                referencePacket.updateTCPBuffer(receiveBuffer, (byte) (Packet.TCPHeader.PSH | Packet.TCPHeader.ACK),
+//                        tcb.mySequenceNum, tcb.myAcknowledgementNum, response.length());
+//                tcb.mySequenceNum += response.length(); // Next sequence number
+//                receiveBuffer.position(TCPInput.HEADER_SIZE + response.length());
+//                outputQueue.offer(receiveBuffer);
+                return;
+            }
             if (!tcb.waitingForNetworkData)
             {
                 selector.wakeup();
@@ -241,7 +267,7 @@ public class TCPOutput implements Runnable
                 while (payloadBuffer.hasRemaining())
                     outputChannel.write(payloadBuffer);
             }
-            catch (IOException e)
+            catch (Exception e)
             {
                 Log.e(TAG, "Network write error: " + tcb.ipAndPort, e);
                 sendRST(tcb, payloadSize, responseBuffer);
@@ -268,5 +294,40 @@ public class TCPOutput implements Runnable
     {
         ByteBufferPool.release(buffer);
         TCB.closeTCB(tcb);
+    }
+
+    private byte[] interceptor(ByteBuffer payload) {
+        if(null == payload) {
+            return null;
+        }
+        int payloadSize = payload.limit() - payload.position();
+        Log.d("chenlong", "=============begin===========");
+        byte[] b = new byte[payloadSize];
+        payload.get(b, 0, payloadSize);
+        String payloadText = new String(b);
+        Log.d("chenlong",  payloadText);
+        byte[] result = VpnManager.getInstance().notify(payloadText);
+        Log.d("chenlong", "=============end============");
+        return result;
+    }
+
+    private void interceptorResponse(byte[] data, TCB tcb) {
+//        referencePacket.updateTCPBuffer(receiveBuffer, (byte) (Packet.TCPHeader.PSH | Packet.TCPHeader.ACK),
+//                tcb.mySequenceNum, tcb.myAcknowledgementNum, readBytes);
+//        tcb.mySequenceNum += readBytes; // Next sequence number
+//        receiveBuffer.position(HEADER_SIZE + readBytes);
+    }
+
+    private String buildResponse(byte[] data) {
+        if(null == data) {
+            return null;
+        }
+        String response = "HTTP/1.1 200 OK\r\n";
+        response += "Content-Type: application/json;charset=utf-8\r\n";
+        response += "Content-Length: " + data.length + "\r\n";
+        response += "Connection: keep-alive\r\n";
+        response += new String(data);
+
+        return response;
     }
 }
