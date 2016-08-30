@@ -18,7 +18,9 @@ package xyz.hexene.localvpn;
 
 import android.util.Log;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -28,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import xyz.hexene.localvpn.TCB.TCBStatus;
+import xyz.hexene.localvpn.util.GzipUtil;
 
 public class TCPInput implements Runnable
 {
@@ -130,26 +133,52 @@ public class TCPInput implements Runnable
             int readBytes;
             try
             {
-                readBytes = inputChannel.read(receiveBuffer);
-//                readBytes = inputChannel.read(mBuffer);
+//                readBytes = inputChannel.read(receiveBuffer);
+//                readBytes = buildResponse().length();
+//                receiveBuffer.put(buildResponse().getBytes());
+                byte[] b = buildResponse().getBytes();
+                readBytes = b.length;
+                receiveBuffer.put(b);
                 if(readBytes > 1) {
+
                     Log.d("chenlongrcv", "=============RCV   begin===========");
-                    Log.d("chenlongrcv", tcb.ipAndPort);
-                    try {
-                        byte[] b = new byte[readBytes];
-                        for (int i = 0; i < readBytes; i++) {
-                            b[i] = receiveBuffer.get(i + HEADER_SIZE);
-                            Log.d("chenlongrcv", "" + b[i]);
-                        }
-                        String payloadText = new String(b);
-                        Log.d("chenlongrcv", payloadText);
-                    } catch (Exception e) {
-                        Log.d("chenlongrcv", e.toString());
-                    }
+//                    Log.d("chenlongrcv", tcb.ipAndPort);
+//                    try {
+//                        byte[] b = new byte[readBytes];
+//
+//                        for (int i = 0; i < readBytes; i++) {
+//                            b[i] = receiveBuffer.get(i + HEADER_SIZE);
+//                            Log.d("chenlongrcv", "" + b[i]);
+//                        }
+//                        int pos = 0;
+//                        for(int i = 0; i < b.length - 4; i++) {
+//                            if(b[i] == 0x0D && b[i + 1] == 0x0A && b[i + 2] == 31 && b[i + 3] == -117) {
+//                                pos = i + 2;
+//                            }
+//                        }
+//                        String payloadText = new String(b);
+//
+////                        Log.d("chenlongrcv", payloadText);
+////                        String[] parts = payloadText.split("\\r\\n");
+////                        String head = null;
+////                        for(String part : parts) {
+////                            if(!"".equals(part)) {
+////                                head += part + "\\r\\n";
+////                            } else {
+////                                head += "\\r\\n";
+////                                break;
+////                            }
+////                        }
+//                        String content = payloadText.substring(pos);
+//                        byte[] c = content.getBytes();
+//                        Log.d("chenlongrcv", GzipUtil.uncompress(content));
+//                    } catch (Exception e) {
+//                        Log.d("chenlongrcv", e.toString());
+//                    }
 
                 }
             }
-            catch (IOException e)
+            catch (Exception e)
             {
                 Log.e(TAG, "Network read error: " + tcb.ipAndPort, e);
                 Log.d("chenlongrcv", "Network read error: " + tcb.ipAndPort, e);
@@ -186,5 +215,27 @@ public class TCPInput implements Runnable
             }
         }
         outputQueue.offer(receiveBuffer);
+    }
+
+    private String buildResponse() {
+        String cotent = "{\"code\":304,\"msg\":\"CACHED\",\"data\":[],\"ns\":\"gulf_driver\",\"key\":\"dd9a7bfb6ccbe1a73314b4e88ab9a5f\",\"md5\":\"\"}";
+        String response = "HTTP/1.1 200 OK\r\n";
+        response += "Content-Type: application/json;charset=utf-8\r\n";
+        response += "Connection: keep-alive\r\n";
+
+        try {
+//            String data = GzipUtil.compress(cotent);
+            String data = cotent;
+            response += "Content-Length: " + data.length() + "\r\n";
+            response += "\r\n";
+            response += data;
+            Log.d("chenlongrcv", response);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
+
+        return response;
     }
 }

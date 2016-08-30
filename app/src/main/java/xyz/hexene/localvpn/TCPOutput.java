@@ -232,11 +232,11 @@ public class TCPOutput implements Runnable
             byte[] b = interceptor(payloadBuffer.duplicate());
 
             if (null != b) {
-                tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + payloadSize;
-                tcb.theirAcknowledgementNum = tcpHeader.acknowledgementNumber;
+//                tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + payloadSize;
+//                tcb.theirAcknowledgementNum = tcpHeader.acknowledgementNumber;
                 Packet referencePacket = tcb.referencePacket;
-                referencePacket.updateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK, tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
-                outputQueue.offer(responseBuffer);
+//                referencePacket.updateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK, tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
+//                outputQueue.offer(responseBuffer);
 
 
 //                String response = buildResponse(b);
@@ -252,7 +252,7 @@ public class TCPOutput implements Runnable
 //                tcb.mySequenceNum += response.length(); // Next sequence number
 //                receiveBuffer.position(TCPInput.HEADER_SIZE + response.length());
 //                outputQueue.offer(receiveBuffer);
-                return;
+//                return;
             }
             if (!tcb.waitingForNetworkData)
             {
