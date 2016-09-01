@@ -110,13 +110,13 @@ public class Packet
         backingBuffer = buffer;
 
         tcpHeader.flags = flags;
-        backingBuffer.put(ip4Header.headerLength + 13, flags);
+        backingBuffer.put(IP4_HEADER_SIZE + 13, flags);
 
         tcpHeader.sequenceNumber = sequenceNum;
-        backingBuffer.putInt(ip4Header.headerLength  + 4, (int) sequenceNum);
+        backingBuffer.putInt(IP4_HEADER_SIZE + 4, (int) sequenceNum);
 
         tcpHeader.acknowledgementNumber = ackNum;
-        backingBuffer.putInt(ip4Header.headerLength  + 8, (int) ackNum);
+        backingBuffer.putInt(IP4_HEADER_SIZE + 8, (int) ackNum);
 
         // Reset header size, since we don't need options
         byte dataOffset = (byte) (TCP_HEADER_SIZE << 2);
@@ -125,7 +125,7 @@ public class Packet
 
         updateTCPChecksum(payloadSize);
 
-        int ip4TotalLength = ip4Header.headerLength + tcpHeader.headerLength + payloadSize;
+        int ip4TotalLength = IP4_HEADER_SIZE + TCP_HEADER_SIZE + payloadSize;
         backingBuffer.putShort(2, (short) ip4TotalLength);
         ip4Header.totalLength = ip4TotalLength;
 
@@ -139,14 +139,14 @@ public class Packet
         backingBuffer = buffer;
 
         int udpTotalLength = UDP_HEADER_SIZE + payloadSize;
-        backingBuffer.putShort(ip4Header.headerLength + 4, (short) udpTotalLength);
+        backingBuffer.putShort(IP4_HEADER_SIZE + 4, (short) udpTotalLength);
         udpHeader.length = udpTotalLength;
 
         // Disable UDP checksum validation
-        backingBuffer.putShort(ip4Header.headerLength + 6, (short) 0);
+        backingBuffer.putShort(IP4_HEADER_SIZE + 6, (short) 0);
         udpHeader.checksum = 0;
 
-        int ip4TotalLength = ip4Header.headerLength + udpTotalLength;
+        int ip4TotalLength = IP4_HEADER_SIZE + udpTotalLength;
         backingBuffer.putShort(2, (short) ip4TotalLength);
         ip4Header.totalLength = ip4TotalLength;
 
@@ -239,7 +239,7 @@ public class Packet
         public InetAddress sourceAddress;
         public InetAddress destinationAddress;
 
-        public byte[] optionsAndPadding;
+        public int optionsAndPadding;
 
         private enum TransportProtocol
         {
@@ -294,11 +294,7 @@ public class Packet
             buffer.get(addressBytes, 0, 4);
             this.destinationAddress = InetAddress.getByAddress(addressBytes);
 
-            int optionsLength = this.headerLength - IP4_HEADER_SIZE;
-            if (optionsLength > 0) {
-                optionsAndPadding = new byte[optionsLength];
-                buffer.get(optionsAndPadding, 0, optionsLength);
-            }
+            //this.optionsAndPadding = buffer.getInt();
         }
 
         public void fillHeader(ByteBuffer buffer)
@@ -315,9 +311,6 @@ public class Packet
 
             buffer.put(this.sourceAddress.getAddress());
             buffer.put(this.destinationAddress.getAddress());
-            if (optionsAndPadding != null) {
-                buffer.put(optionsAndPadding);
-            }
         }
 
         @Override
@@ -432,9 +425,6 @@ public class Packet
 
             buffer.putShort((short) checksum);
             buffer.putShort((short) urgentPointer);
-            if (optionsAndPadding != null) {
-                buffer.put(optionsAndPadding);
-            }
         }
 
         @Override
