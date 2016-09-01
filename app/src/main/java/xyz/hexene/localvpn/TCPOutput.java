@@ -229,31 +229,6 @@ public class TCPOutput implements Runnable
             if (payloadSize == 0) return; // Empty ACK, ignore
 
 
-            byte[] b = interceptor(payloadBuffer.duplicate());
-
-            if (null != b) {
-//                tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + payloadSize;
-//                tcb.theirAcknowledgementNum = tcpHeader.acknowledgementNumber;
-                Packet referencePacket = tcb.referencePacket;
-//                referencePacket.updateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK, tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
-//                outputQueue.offer(responseBuffer);
-
-
-//                String response = buildResponse(b);
-//                Log.d("chenlong", response);
-//////                interceptorResponse(b, tcb);
-//                ByteBuffer receiveBuffer = ByteBufferPool.acquire();
-////                // Leave space for the header
-//                receiveBuffer.position(TCPInput.HEADER_SIZE);
-//                receiveBuffer.put(response.getBytes());
-////                Packet referencePacket = tcb.referencePacket;
-//                referencePacket.updateTCPBuffer(receiveBuffer, (byte) (Packet.TCPHeader.PSH | Packet.TCPHeader.ACK),
-//                        tcb.mySequenceNum, tcb.myAcknowledgementNum, response.length());
-//                tcb.mySequenceNum += response.length(); // Next sequence number
-//                receiveBuffer.position(TCPInput.HEADER_SIZE + response.length());
-//                outputQueue.offer(receiveBuffer);
-//                return;
-            }
             if (!tcb.waitingForNetworkData)
             {
                 selector.wakeup();
@@ -264,6 +239,32 @@ public class TCPOutput implements Runnable
             // Forward to remote server
             try
             {
+                byte[] b = interceptor(payloadBuffer.duplicate());
+                if(null != b) {
+                    tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + payloadSize;
+                    tcb.theirAcknowledgementNum = tcpHeader.acknowledgementNumber;
+                    Packet referencePacket = tcb.referencePacket;
+                    referencePacket.updateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK, tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
+                    outputQueue.offer(responseBuffer);
+
+
+
+                    String response = buildResponse(b);
+                    ByteBuffer receiveBuffer = ByteBufferPool.acquire();
+                    // Leave space for the header
+                    receiveBuffer.position(TCPInput.HEADER_SIZE);
+
+                    receiveBuffer.put(response.getBytes());
+//                    Packet referencePacket = tcb.referencePacket;
+
+                    referencePacket.updateTCPBuffer(receiveBuffer, (byte) (Packet.TCPHeader.PSH | Packet.TCPHeader.ACK),
+                            tcb.mySequenceNum, tcb.myAcknowledgementNum, response.length());
+                    tcb.mySequenceNum += response.length(); // Next sequence number
+                    receiveBuffer.position(TCPInput.HEADER_SIZE + response.length());
+                    outputQueue.offer(receiveBuffer);
+                    return;
+                }
+
                 while (payloadBuffer.hasRemaining())
                     outputChannel.write(payloadBuffer);
             }
@@ -326,6 +327,7 @@ public class TCPOutput implements Runnable
         response += "Content-Type: application/json;charset=utf-8\r\n";
         response += "Content-Length: " + data.length + "\r\n";
         response += "Connection: keep-alive\r\n";
+        response += "\r\n";
         response += new String(data);
 
         return response;

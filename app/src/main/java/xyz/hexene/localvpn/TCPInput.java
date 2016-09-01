@@ -133,12 +133,11 @@ public class TCPInput implements Runnable
             int readBytes;
             try
             {
-//                readBytes = inputChannel.read(receiveBuffer);
-//                readBytes = buildResponse().length();
-//                receiveBuffer.put(buildResponse().getBytes());
-                byte[] b = buildResponse().getBytes();
-                readBytes = b.length;
-                receiveBuffer.put(b);
+                readBytes = inputChannel.read(receiveBuffer);
+//                byte[] b = buildResponse().getBytes();
+//                readBytes = b.length;
+//                receiveBuffer.position(HEADER_SIZE);
+//                receiveBuffer.put(b);
                 if(readBytes > 1) {
 
                     Log.d("chenlongrcv", "=============RCV   begin===========");

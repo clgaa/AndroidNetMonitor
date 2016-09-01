@@ -26,17 +26,13 @@ public class HttpInterceptor {
                 String[] parts = payload.split("\\r\\n");
                 String[] urls = parts[0].split("\\s");
                 String url = urls[1];
-                for(String part : parts) {
-                    if (part.startsWith("Host")) {
-                        if(part.contains(host) && null != api) {
-                            Iterator<String> iterator = api.keySet().iterator();
-                            while(iterator.hasNext()) {
-                                String key = iterator.next();
-                                if(url.endsWith(key)) {
-                                    String value = api.get(key);
-                                    return value.getBytes();
-                                }
-                            }
+                if (null != api) {
+                    Iterator<String> iterator = api.keySet().iterator();
+                    while (iterator.hasNext()) {
+                        String key = iterator.next();
+                        if (url.endsWith(key)) {
+                            String value = api.get(key);
+                            return value.getBytes();
                         }
                     }
                 }

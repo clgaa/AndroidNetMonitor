@@ -41,9 +41,7 @@ public class LocalVPNService extends VpnService
     private static final String VPN_ADDRESS = "10.0.0.2"; // Only IPv4 support for now
     private static final String VPN_ROUTE = "0.0.0.0"; // Intercept everything
 
-    private String iplist = "219.133.60.160|14.17.41.181|120.198.203.174|183.232.93.154" +
-            "|163.177.71.185|163.177.89.162|101.227.169.160|140.207.123.156|117.185.24.113|101.226.127.155" +
-            "|140.207.186.158|117.185.30.170";
+
 
     public static final String BROADCAST_VPN_STATE = "xyz.hexene.localvpn.VPN_STATE";
 
@@ -100,7 +98,7 @@ public class LocalVPNService extends VpnService
         {
             Builder builder = new Builder();
             builder.addAddress(VPN_ADDRESS, 32);
-            String[] ips = iplist.split("\\|");
+            String[] ips = VpnConfig.VPN_ROUTE_LIST.split("\\|");
             for(String ip : ips) {
                 builder.addRoute(ip, 32);
             }
@@ -175,6 +173,28 @@ public class LocalVPNService extends VpnService
             this.networkToDeviceQueue = networkToDeviceQueue;
         }
 
+        private byte[] interceptor(ByteBuffer payload) {
+            if(null == payload) {
+                return null;
+            }
+            int payloadSize = payload.limit() - payload.position();
+            if (payloadSize > 0) {
+                try {
+
+                    Log.d("chenlong", "=============begin===========");
+                    byte[] b = new byte[payloadSize];
+                    payload.get(b, 0, payloadSize);
+                    String payloadText = new String(b);
+                    Log.d("chenlong", payloadText);
+//        byte[] result = VpnManager.getInstance().notify(payloadText);
+                    Log.d("chenlong", "=============end============");
+                } catch (Exception e) {
+                    Log.d("chenlong", e.toString());
+                }
+            }
+            return null;
+        }
+
         @Override
         public void run()
         {
@@ -209,6 +229,7 @@ public class LocalVPNService extends VpnService
                         else if (packet.isTCP())
                         {
 //                            Log.d("chenlong", packet.toString());
+//                            interceptor(bufferToNetwork);
                             deviceToNetworkTCPQueue.offer(packet);
                         }
                         else
@@ -258,4 +279,6 @@ public class LocalVPNService extends VpnService
             }
         }
     }
+
+
 }

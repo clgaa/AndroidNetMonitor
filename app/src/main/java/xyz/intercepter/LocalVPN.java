@@ -75,7 +75,10 @@ public class LocalVPN extends ActionBarActivity
                 new IntentFilter(LocalVPNService.BROADCAST_VPN_STATE));
         ConcurrentHashMap<String, String> api = new ConcurrentHashMap<>();
         api.put("dSetOnlineStatus", "{\"code\":304,\"msg\":\"CACHED\",\"data\":[],\"ns\":\"gulf_driver\",\"key\":\"dd9a7bfb6ccbe1a73314b4e88ab9a5f\",\"md5\":\"\"}");
+        api.put("dGetListenMode", "{\"errno\":0,\"errmsg\":\"SUCCESS\",\"listen_mode\":1,\"book_stime\":-1,\"book_etime\":-1,\"listen_carpool_mode\":1,\"nova_enabled\":0,\"listen_distance\":0,\"auto_grab_flag\":1,\"grab_mode\":1,\"compet_show_dest\":1,\"can_compet_order_num\":-1,\"addr_info\":{\"dest_name\":\"\",\"dest_address\":\"\",\"dest_lng\":\"0.000000\",\"dest_lat\":\"0.000000\",\"dest_type\":0},\"receive_level\":\"600,500\",\"receive_level_type\":96,\"show_carpool\":0,\"show_nova\":0,\"distance_config\":\"\",\"show_auto_grab\":0,\"show_assign\":0,\"show_dest\":1,\"car_level\":{\"default_level\":\"600\",\"level_info\":\"\\u666e\\u901a\"}}");
         interceptor = new HttpInterceptor("api.udache.com", api);
+
+//        interceptor = new HttpInterceptor("163.177.71.185", api);
     }
 
     private void startVPN()
