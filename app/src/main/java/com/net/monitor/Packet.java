@@ -74,6 +74,15 @@ public class Packet
         return isUDP;
     }
 
+    public byte[] getPayload() {
+        int payloadSize = backingBuffer.limit() - backingBuffer.position();
+        backingBuffer.mark();
+        byte payload[] = new byte[payloadSize];
+        backingBuffer.get(payload, 0, payloadSize);
+        backingBuffer.reset();
+        return payload;
+    }
+
     public void swapSourceAndDestination()
     {
         InetAddress newSourceAddress = ip4Header.destinationAddress;
