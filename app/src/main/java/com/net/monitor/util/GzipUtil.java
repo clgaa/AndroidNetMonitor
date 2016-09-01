@@ -1,4 +1,4 @@
-package xyz.hexene.localvpn.util;
+package com.net.monitor.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

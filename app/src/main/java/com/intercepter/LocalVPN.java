@@ -14,7 +14,7 @@
 ** limitations under the License.
 */
 
-package xyz.intercepter;
+package com.intercepter;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -29,8 +29,8 @@ import android.widget.Button;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import xyz.hexene.localvpn.LocalVPNService;
-import xyz.hexene.localvpn.R;
+import com.net.monitor.LocalVPNService;
+import com.net.monitor.R;
 
 
 public class LocalVPN extends ActionBarActivity

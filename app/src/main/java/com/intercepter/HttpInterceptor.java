@@ -1,10 +1,10 @@
-package xyz.intercepter;
+package com.intercepter;
 
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 
-import xyz.hexene.localvpn.VpnManager;
-import xyz.hexene.localvpn.listener.IMonitor;
+import com.net.monitor.VpnManager;
+import com.net.monitor.listener.IMonitor;
 
 /**
  * Created by didi on 16/8/29.

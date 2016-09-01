@@ -1,4 +1,4 @@
-package xyz.hexene.localvpn;
+package com.net.monitor;
 
 /**
  * Created by didi on 16/9/1.

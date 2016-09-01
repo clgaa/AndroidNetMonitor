@@ -1,9 +1,6 @@
-package xyz.hexene.localvpn;
+package com.net.monitor;
 
-import java.util.Iterator;
-import java.util.concurrent.ConcurrentHashMap;
-
-import xyz.hexene.localvpn.listener.IMonitor;
+import com.net.monitor.listener.IMonitor;
 
 /**
  * Created by didi on 16/8/29.

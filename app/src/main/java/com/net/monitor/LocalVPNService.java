@@ -14,7 +14,7 @@
 ** limitations under the License.
 */
 
-package xyz.hexene.localvpn;
+package com.net.monitor;
 
 import android.app.PendingIntent;
 import android.content.Intent;

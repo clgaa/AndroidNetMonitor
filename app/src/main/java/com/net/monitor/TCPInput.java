@@ -14,13 +14,11 @@
 ** limitations under the License.
 */
 
-package xyz.hexene.localvpn;
+package com.net.monitor;
 
 import android.util.Log;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -29,8 +27,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import xyz.hexene.localvpn.TCB.TCBStatus;
-import xyz.hexene.localvpn.util.GzipUtil;
+import com.net.monitor.TCB.TCBStatus;
 
 public class TCPInput implements Runnable
 {
