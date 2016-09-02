@@ -107,7 +107,7 @@ public class TCPInput implements Runnable
         }
         catch (IOException e)
         {
-            Log.e(TAG, "Connection error: " + tcb.ipAndPort, e);
+            Log.e(TAG, "Connection error: " + tcb.mTcbKey, e);
             ByteBuffer responseBuffer = ByteBufferPool.acquire();
             referencePacket.updateTCPBuffer(responseBuffer, (byte) Packet.TCPHeader.RST, 0, tcb.myAcknowledgementNum, 0);
             outputQueue.offer(responseBuffer);
@@ -176,8 +176,8 @@ public class TCPInput implements Runnable
             }
             catch (Exception e)
             {
-                Log.e(TAG, "Network read error: " + tcb.ipAndPort, e);
-                Log.d("chenlongrcv", "Network read error: " + tcb.ipAndPort, e);
+                Log.e(TAG, "Network read error: " + tcb.mTcbKey, e);
+                Log.d("chenlongrcv", "Network read error: " + tcb.mTcbKey, e);
                 referencePacket.updateTCPBuffer(receiveBuffer, (byte) Packet.TCPHeader.RST, 0, tcb.myAcknowledgementNum, 0);
                 outputQueue.offer(receiveBuffer);
                 TCB.closeTCB(tcb);
