@@ -22,7 +22,7 @@ public class HttpInterceptor {
             if (null == payload || "".equalsIgnoreCase(payload)) {
                 return null;
             }
-            if(payload.startsWith("POST")) {
+            if (payload.startsWith("POST")) {
                 String[] parts = payload.split("\\r\\n");
                 String[] urls = parts[0].split("\\s");
                 String url = urls[1];
@@ -47,11 +47,9 @@ public class HttpInterceptor {
         this.host = host;
         this.api = api;
     }
+
     public void startIntercept() {
         VpnManager.getInstance().registerMonitorListener(monitorCallBack);
     }
 
-    public void endIntercept() {
-        VpnManager.getInstance().unRegisterMonitorListener();
-    }
 }

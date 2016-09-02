@@ -33,7 +33,7 @@ public class GzipUtil {
         GZIPInputStream gunzip = new GZIPInputStream(in);
         byte[] buffer = new byte[512];
         int n;
-        while ((n = gunzip.read(buffer))>= 0) {
+        while ((n = gunzip.read(buffer)) >= 0) {
             out.write(buffer, 0, n);
         }
         // toString()使用平台默认编码，也可以显式的指定如toString(&quot;GBK&quot;)

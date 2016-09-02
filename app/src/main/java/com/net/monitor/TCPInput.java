@@ -80,13 +80,10 @@ public class TCPInput implements Runnable {
             if (((SocketChannel) tcb.selectionKey.channel()).finishConnect()) {
                 keyIterator.remove();
                 tcb.status = TCBStatus.SYN_RECEIVED;
-
-                // TODO: Set MSS for receiving larger packets from the device
                 ByteBuffer responseBuffer = ByteBufferPool.acquire();
                 referencePacket.updateTCPBuffer(responseBuffer, (byte) (Packet.TCPHeader.SYN | Packet.TCPHeader.ACK),
                         tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
                 outputQueue.offer(responseBuffer);
-
                 tcb.mySequenceNum++; // SYN counts as a byte
                 key.interestOps(SelectionKey.OP_READ);
             }

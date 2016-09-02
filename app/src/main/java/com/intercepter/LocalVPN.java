@@ -33,21 +33,17 @@ import com.net.monitor.LocalVPNService;
 import com.net.monitor.R;
 
 
-public class LocalVPN extends ActionBarActivity
-{
+public class LocalVPN extends ActionBarActivity {
     private static final int VPN_REQUEST_CODE = 0x0F;
 
     private boolean waitingForVPNStart;
     private HttpInterceptor interceptor;
 
 
-    private BroadcastReceiver vpnStateReceiver = new BroadcastReceiver()
-    {
+    private BroadcastReceiver vpnStateReceiver = new BroadcastReceiver() {
         @Override
-        public void onReceive(Context context, Intent intent)
-        {
-            if (LocalVPNService.BROADCAST_VPN_STATE.equals(intent.getAction()))
-            {
+        public void onReceive(Context context, Intent intent) {
+            if (LocalVPNService.BROADCAST_VPN_STATE.equals(intent.getAction())) {
                 if (intent.getBooleanExtra("running", false)) {
                     waitingForVPNStart = false;
                     interceptor.startIntercept();
@@ -57,16 +53,13 @@ public class LocalVPN extends ActionBarActivity
     };
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_local_vpn);
-        final Button vpnButton = (Button)findViewById(R.id.vpn);
-        vpnButton.setOnClickListener(new View.OnClickListener()
-        {
+        final Button vpnButton = (Button) findViewById(R.id.vpn);
+        vpnButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v)
-            {
+            public void onClick(View v) {
                 startVPN();
             }
         });
@@ -78,11 +71,9 @@ public class LocalVPN extends ActionBarActivity
         api.put("dGetListenMode", "{\"errno\":0,\"errmsg\":\"SUCCESS\",\"listen_mode\":1,\"book_stime\":-1,\"book_etime\":-1,\"listen_carpool_mode\":1,\"nova_enabled\":0,\"listen_distance\":0,\"auto_grab_flag\":1,\"grab_mode\":1,\"compet_show_dest\":1,\"can_compet_order_num\":-1,\"addr_info\":{\"dest_name\":\"\",\"dest_address\":\"\",\"dest_lng\":\"0.000000\",\"dest_lat\":\"0.000000\",\"dest_type\":0},\"receive_level\":\"600,500\",\"receive_level_type\":96,\"show_carpool\":0,\"show_nova\":0,\"distance_config\":\"\",\"show_auto_grab\":0,\"show_assign\":0,\"show_dest\":1,\"car_level\":{\"default_level\":\"600\",\"level_info\":\"\\u666e\\u901a\"}}");
         interceptor = new HttpInterceptor("api.udache.com", api);
 
-//        interceptor = new HttpInterceptor("163.177.71.185", api);
     }
 
-    private void startVPN()
-    {
+    private void startVPN() {
         Intent vpnIntent = VpnService.prepare(this);
         if (vpnIntent != null)
             startActivityForResult(vpnIntent, VPN_REQUEST_CODE);
@@ -91,11 +82,9 @@ public class LocalVPN extends ActionBarActivity
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data)
-    {
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == VPN_REQUEST_CODE && resultCode == RESULT_OK)
-        {
+        if (requestCode == VPN_REQUEST_CODE && resultCode == RESULT_OK) {
             waitingForVPNStart = true;
             startService(new Intent(this, LocalVPNService.class));
             enableButton(false);
@@ -109,16 +98,12 @@ public class LocalVPN extends ActionBarActivity
         enableButton(!waitingForVPNStart && !LocalVPNService.isRunning());
     }
 
-    private void enableButton(boolean enable)
-    {
+    private void enableButton(boolean enable) {
         final Button vpnButton = (Button) findViewById(R.id.vpn);
-        if (enable)
-        {
+        if (enable) {
             vpnButton.setEnabled(true);
             vpnButton.setText(R.string.start_vpn);
-        }
-        else
-        {
+        } else {
             vpnButton.setEnabled(false);
             vpnButton.setText(R.string.stop_vpn);
         }

@@ -101,7 +101,7 @@ public class TCPOutput implements Runnable {
             throws IOException {
 
         TCPHeader tcpHeader = currentOutPacket.tcpHeader;
-        IP4Header ip4Header =currentOutPacket.ip4Header;
+        IP4Header ip4Header = currentOutPacket.ip4Header;
 
         currentOutPacket.swapSourceAndDestination();
         if (tcpHeader.isSYN()) {
@@ -170,7 +170,7 @@ public class TCPOutput implements Runnable {
         int payloadSize = payloadBuffer.limit() - payloadBuffer.position();
 
         synchronized (tcb) {
-            SocketChannel outputChannel = (SocketChannel)tcb.selectionKey.channel();
+            SocketChannel outputChannel = (SocketChannel) tcb.selectionKey.channel();
             if (tcb.status == TCBStatus.SYN_RECEIVED) {
                 tcb.status = TCBStatus.ESTABLISHED;
                 mSelector.wakeup();
