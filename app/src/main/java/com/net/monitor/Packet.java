@@ -103,6 +103,17 @@ public class Packet
         }
     }
 
+    /**
+     *
+     * 将当前packet(this)的各种信息复制给参数buffer指定的buffer中,然后修改相关的参数
+     *
+     * @param buffer
+     * @param flags
+     * @param sequenceNum
+     * @param ackNum
+     * @param payloadSize
+     */
+
     public void updateTCPBuffer(ByteBuffer buffer, byte flags, long sequenceNum, long ackNum, int payloadSize)
     {
         buffer.position(0);

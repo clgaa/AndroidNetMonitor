@@ -19,7 +19,6 @@ package com.net.monitor;
 import android.util.Log;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -109,9 +108,9 @@ public class TCPOutput implements Runnable {
             SocketChannel outputChannel = SocketChannel.open();
             outputChannel.configureBlocking(false);
             mVpnService.protect(outputChannel.socket());
-
+            //模拟一个ack&syn包
             TCB tcb = new TCB(tcbKey, mRandom.nextInt(Short.MAX_VALUE + 1), tcpHeader.sequenceNumber, tcpHeader.sequenceNumber + 1,
-                    tcpHeader.acknowledgementNumber, outputChannel, currentOutPacket);
+                    tcpHeader.acknowledgementNumber, currentOutPacket);
             TCB.putTCB(tcbKey, tcb);
             try {
                 outputChannel.connect(new InetSocketAddress(ip4Header.destinationAddress, tcpHeader.destinationPort));
@@ -119,7 +118,7 @@ public class TCPOutput implements Runnable {
                     tcb.status = TCBStatus.SYN_RECEIVED;
                     currentOutPacket.updateTCPBuffer(responseBuffer, (byte) (TCPHeader.SYN | TCPHeader.ACK),
                             tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
-                    tcb.mySequenceNum++; // SYN counts as a byte
+                    tcb.mySequenceNum++;
                 } else {
                     tcb.status = TCBStatus.SYN_SENT;
                     tcb.selectionKey = outputChannel.register(mSelector, SelectionKey.OP_CONNECT, tcb);
@@ -171,10 +170,9 @@ public class TCPOutput implements Runnable {
         int payloadSize = payloadBuffer.limit() - payloadBuffer.position();
 
         synchronized (tcb) {
-            SocketChannel outputChannel = tcb.channel;
+            SocketChannel outputChannel = (SocketChannel)tcb.selectionKey.channel();
             if (tcb.status == TCBStatus.SYN_RECEIVED) {
                 tcb.status = TCBStatus.ESTABLISHED;
-
                 mSelector.wakeup();
                 tcb.selectionKey = outputChannel.register(mSelector, SelectionKey.OP_READ, tcb);
                 tcb.waitingForNetworkData = true;

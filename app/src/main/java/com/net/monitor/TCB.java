@@ -43,8 +43,6 @@ public class TCB {
     }
 
     public Packet referencePacket;
-
-    public SocketChannel channel;
     public boolean waitingForNetworkData;
     public SelectionKey selectionKey;
 
@@ -69,16 +67,13 @@ public class TCB {
         }
     }
 
-    public TCB(TCBKey tcbKey, long mySequenceNum, long theirSequenceNum, long myAcknowledgementNum, long theirAcknowledgementNum,
-               SocketChannel channel, Packet referencePacket) {
+    public TCB(TCBKey tcbKey, long mySequenceNum, long theirSequenceNum, long myAcknowledgementNum, long theirAcknowledgementNum, Packet referencePacket) {
         this.mTcbKey = tcbKey;
 
         this.mySequenceNum = mySequenceNum;
         this.theirSequenceNum = theirSequenceNum;
         this.myAcknowledgementNum = myAcknowledgementNum;
         this.theirAcknowledgementNum = theirAcknowledgementNum;
-
-        this.channel = channel;
         this.referencePacket = referencePacket;
     }
 
@@ -101,7 +96,9 @@ public class TCB {
 
     private void closeChannel() {
         try {
-            channel.close();
+            if (selectionKey != null) {
+                selectionKey.channel().close();
+            }
         } catch (IOException e) {
             // Ignore
         }
