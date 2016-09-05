@@ -10,16 +10,18 @@ import java.util.regex.Pattern;
  * Created by didi on 16/9/5.
  */
 public class DirList {
+
     public static String[] getApi(String path, String regx) {
-        if(TextUtil.isEmpty(path) || TextUtil.isEmpty(regx))
-        return null;
-        File dir = new File(path);
-        if(null == dir) {
+        if(TextUtil.isEmpty(path) || TextUtil.isEmpty(regx)) {
             return null;
         }
+
+        File dir = new File(path);
         String[] list = dir.list(new DirFilter(regx));
-        for(String dirItem : list) {
-            Log.d("chenlong", "api name = " + dirItem);
+        if (null != list) {
+            for (String dirItem : list) {
+                Log.d("chenlong", "api name = " + dirItem);
+            }
         }
         return list;
     }
