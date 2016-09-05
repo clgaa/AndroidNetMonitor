@@ -28,8 +28,10 @@ import java.util.Map;
 public class TCB {
     public TCBKey mTcbKey;
 
-    public long mySequenceNum, theirSequenceNum;
-    public long myAcknowledgementNum, theirAcknowledgementNum;
+    volatile public long mySequenceNum;
+    volatile public long theirSequenceNum;
+    volatile public long myAcknowledgementNum;
+    volatile public long theirAcknowledgementNum;
     public TCBStatus status;
 
 
@@ -45,7 +47,7 @@ public class TCB {
     public Packet referencePacket;
     public boolean waitingForNetworkData;
     public SelectionKey selectionKey;
-
+    public SocketChannel mOutputChannel;
     private static final int MAX_CACHE_SIZE = 50; // XXX: Is this ideal?
     private static LRUCache<TCBKey, TCB> tcbCache =
             new LRUCache<>(MAX_CACHE_SIZE, new LRUCache.CleanupCallback<String, TCB>() {
@@ -67,9 +69,9 @@ public class TCB {
         }
     }
 
-    public TCB(TCBKey tcbKey, long mySequenceNum, long theirSequenceNum, long myAcknowledgementNum, long theirAcknowledgementNum, Packet referencePacket) {
+    public TCB(TCBKey tcbKey,  SocketChannel outputChannel ,long mySequenceNum, long theirSequenceNum, long myAcknowledgementNum, long theirAcknowledgementNum, Packet referencePacket) {
         this.mTcbKey = tcbKey;
-
+        this.mOutputChannel=outputChannel;
         this.mySequenceNum = mySequenceNum;
         this.theirSequenceNum = theirSequenceNum;
         this.myAcknowledgementNum = myAcknowledgementNum;
@@ -96,9 +98,7 @@ public class TCB {
 
     private void closeChannel() {
         try {
-            if (selectionKey != null) {
-                selectionKey.channel().close();
-            }
+            mOutputChannel.close();
         } catch (IOException e) {
             // Ignore
         }

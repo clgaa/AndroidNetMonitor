@@ -30,14 +30,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import com.net.monitor.TCB.TCBStatus;
 
 public class TCPInput implements Runnable {
+
     private static final String TAG = TCPInput.class.getSimpleName();
     public static final int HEADER_SIZE = Packet.IP4_HEADER_SIZE + Packet.TCP_HEADER_SIZE;
-
-    private ConcurrentLinkedQueue<ByteBuffer> outputQueue;
+    private ConcurrentLinkedQueue<ByteBuffer> mNetworksToDevicePacketBytes;
     private Selector selector;
 
-    public TCPInput(ConcurrentLinkedQueue<ByteBuffer> outputQueue, Selector selector) {
-        this.outputQueue = outputQueue;
+    public TCPInput(ConcurrentLinkedQueue<ByteBuffer> inQueue, Selector selector) {
+        this.mNetworksToDevicePacketBytes = inQueue;
         this.selector = selector;
     }
 
@@ -52,10 +52,8 @@ public class TCPInput implements Runnable {
                     Thread.sleep(10);
                     continue;
                 }
-
                 Set<SelectionKey> keys = selector.selectedKeys();
                 Iterator<SelectionKey> keyIterator = keys.iterator();
-
                 while (keyIterator.hasNext() && !Thread.interrupted()) {
                     SelectionKey key = keyIterator.next();
                     if (key.isValid()) {
@@ -76,26 +74,33 @@ public class TCPInput implements Runnable {
     private void processConnect(SelectionKey key, Iterator<SelectionKey> keyIterator) {
         TCB tcb = (TCB) key.attachment();
         Packet referencePacket = tcb.referencePacket;
+        ByteBuffer responseBuffer = ByteBufferPool.acquire();
         try {
-            if (((SocketChannel) tcb.selectionKey.channel()).finishConnect()) {
+            if (tcb.mOutputChannel.finishConnect()) {
                 keyIterator.remove();
                 tcb.status = TCBStatus.SYN_RECEIVED;
-                ByteBuffer responseBuffer = ByteBufferPool.acquire();
                 referencePacket.updateTCPBuffer(responseBuffer, (byte) (Packet.TCPHeader.SYN | Packet.TCPHeader.ACK),
-                        tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
-                outputQueue.offer(responseBuffer);
-                tcb.mySequenceNum++; // SYN counts as a byte
+                        tcb.mySequenceNum++, tcb.myAcknowledgementNum, 0);
                 key.interestOps(SelectionKey.OP_READ);
             }
         } catch (IOException e) {
             Log.e(TAG, "Connection error: " + tcb.mTcbKey, e);
-            ByteBuffer responseBuffer = ByteBufferPool.acquire();
             referencePacket.updateTCPBuffer(responseBuffer, (byte) Packet.TCPHeader.RST, 0, tcb.myAcknowledgementNum, 0);
-            outputQueue.offer(responseBuffer);
+            mNetworksToDevicePacketBytes.offer(responseBuffer);
             TCB.closeTCB(tcb);
         }
+        mNetworksToDevicePacketBytes.offer(responseBuffer);
     }
 
+    /**
+     * 代理服务器应答(如果对应的请求没有被拦截,则就是真实的服务器应答)。
+     * 如果想拦截某个服务器的应答消息返回(请求真实的到达了目的服务器),可以修改此函数。
+     * 如果目的服务器不存在,只是本地构造的响应包(ACk|SYNC),则应在
+     * @TcpOutput#processACK()方法中模拟响应
+     *
+     * @param key
+     * @param keyIterator
+     */
     private void processInput(SelectionKey key, Iterator<SelectionKey> keyIterator) {
         keyIterator.remove();
         ByteBuffer receiveBuffer = ByteBufferPool.acquire();
@@ -105,7 +110,7 @@ public class TCPInput implements Runnable {
         TCB tcb = (TCB) key.attachment();
         synchronized (tcb) {
             Packet referencePacket = tcb.referencePacket;
-            SocketChannel inputChannel = (SocketChannel) key.channel();
+            SocketChannel inputChannel =tcb.mOutputChannel;
             int readBytes;
             try {
                 readBytes = inputChannel.read(receiveBuffer);
@@ -155,7 +160,7 @@ public class TCPInput implements Runnable {
                 Log.e(TAG, "Network read error: " + tcb.mTcbKey, e);
                 Log.d("chenlongrcv", "Network read error: " + tcb.mTcbKey, e);
                 referencePacket.updateTCPBuffer(receiveBuffer, (byte) Packet.TCPHeader.RST, 0, tcb.myAcknowledgementNum, 0);
-                outputQueue.offer(receiveBuffer);
+                mNetworksToDevicePacketBytes.offer(receiveBuffer);
                 TCB.closeTCB(tcb);
                 return;
             }
@@ -182,7 +187,7 @@ public class TCPInput implements Runnable {
                 receiveBuffer.position(HEADER_SIZE + readBytes);
             }
         }
-        outputQueue.offer(receiveBuffer);
+        mNetworksToDevicePacketBytes.offer(receiveBuffer);
     }
 
     private String buildResponse() {
