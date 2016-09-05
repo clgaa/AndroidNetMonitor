@@ -102,6 +102,7 @@ public class TCPOutput implements Runnable {
         TCPHeader tcpHeader = currentOutPacket.tcpHeader;
         IP4Header ip4Header = currentOutPacket.ip4Header;
 
+        currentOutPacket.swapSourceAndDestination();
         if (tcpHeader.isSYN()) {
             SocketChannel outputChannel = SocketChannel.open();
             outputChannel.configureBlocking(false);
@@ -114,7 +115,6 @@ public class TCPOutput implements Runnable {
                 outputChannel.connect(new InetSocketAddress(ip4Header.destinationAddress, tcpHeader.destinationPort));
                 if (outputChannel.finishConnect()) {
                     tcb.status = TCBStatus.SYN_RECEIVED;
-                    currentOutPacket.swapSourceAndDestination();
                     currentOutPacket.updateTCPBuffer(responseBuffer, (byte) (TCPHeader.SYN | TCPHeader.ACK),
                             tcb.mySequenceNum++, tcb.myAcknowledgementNum, 0);
                 } else {
@@ -124,13 +124,10 @@ public class TCPOutput implements Runnable {
                     return;
                 }
             } catch (IOException e) {
-                Log.e(TAG, e.toString(), e);
-                currentOutPacket.swapSourceAndDestination();
                 currentOutPacket.updateTCPBuffer(responseBuffer, (byte) TCPHeader.RST, 0, tcb.myAcknowledgementNum, 0);
                 TCB.closeTCB(tcb);
             }
         } else {
-            currentOutPacket.swapSourceAndDestination();
             currentOutPacket.updateTCPBuffer(responseBuffer, (byte) TCPHeader.RST,
                     0, tcpHeader.sequenceNumber + 1, 0);
         }
