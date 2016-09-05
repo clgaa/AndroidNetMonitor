@@ -30,7 +30,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import com.net.monitor.Packet.TCPHeader;
 import com.net.monitor.Packet.IP4Header;
 import com.net.monitor.TCB.TCBStatus;
-import com.net.monitor.util.Config;
 
 public class TCPOutput implements Runnable {
     private static final String TAG = TCPOutput.class.getSimpleName();
@@ -63,22 +62,31 @@ public class TCPOutput implements Runnable {
                         break;
                     Thread.sleep(10);
                 } while (!currentThread.isInterrupted());
+
                 if (currentThread.isInterrupted())
                     break;
+                ByteBuffer responseBuffer = ByteBufferPool.acquire();
+                ByteBuffer payloadBuffer = currentOutPacket.backingBuffer;
+                currentOutPacket.backingBuffer = null;
                 TCPHeader tcpHeader = currentOutPacket.tcpHeader;
                 TCB.TCBKey tcbKey = new TCB.TCBKey(currentOutPacket.ip4Header.destinationAddress.getHostAddress(), tcpHeader.destinationPort, tcpHeader.sourcePort);
                 TCB tcb = TCB.getTCB(tcbKey);
                 if (tcb == null) {
-                    initializeConnection(tcbKey, currentOutPacket);
+                    initializeConnection(tcbKey, currentOutPacket, responseBuffer);
                 } else if (tcpHeader.isSYN()) {
-                    processDuplicateSYN(tcb, tcpHeader);
-                } else if (tcpHeader.isRST()) { //常见于 客户端因服务响应超时不想与服务器继续建立或断开连接
-                    closeCleanly(tcb);
-                } else if (tcpHeader.isFIN() && tcpHeader.isACK()) {
-                    processFIN(tcb, tcpHeader);
+                    processDuplicateSYN(tcb, tcpHeader, responseBuffer);
+                } else if (tcpHeader.isRST()) { ////服务器端口为开(服务端),请求超时(客户端)
+                    closeCleanly(tcb, responseBuffer);
+                } else if (tcpHeader.isFIN()) {
+                    processFIN(tcb, tcpHeader, responseBuffer);
                 } else if (tcpHeader.isACK()) {
-                    processACK(tcb,tcpHeader, currentOutPacket.backingBuffer);
+                    processACK(tcb, tcpHeader, payloadBuffer, responseBuffer);
                 }
+
+                if (responseBuffer.position() == 0) {
+                    ByteBufferPool.release(responseBuffer);
+                }
+                ByteBufferPool.release(payloadBuffer);
             }
         } catch (InterruptedException e) {
             Log.i(TAG, "Stopping");
@@ -89,16 +97,9 @@ public class TCPOutput implements Runnable {
         }
     }
 
-    /**
-     * 模拟建立连接  拦截客户端发出的第一个SYNC包
-     *
-     * @param tcbKey
-     * @param currentOutPacket
-     * @throws IOException
-     */
-    private void initializeConnection(TCB.TCBKey tcbKey, Packet currentOutPacket)
+    private void initializeConnection(TCB.TCBKey tcbKey, Packet currentOutPacket, ByteBuffer responseBuffer)
             throws IOException {
-        ByteBuffer responseBuffer = ByteBufferPool.acquire();
+
         TCPHeader tcpHeader = currentOutPacket.tcpHeader;
         IP4Header ip4Header = currentOutPacket.ip4Header;
 
@@ -108,7 +109,7 @@ public class TCPOutput implements Runnable {
             outputChannel.configureBlocking(false);
             mVpnService.protect(outputChannel.socket());
             //模拟一个ack&syn包
-            TCB tcb = new TCB(tcbKey, outputChannel, mRandom.nextInt(Short.MAX_VALUE + 1), tcpHeader.sequenceNumber, tcpHeader.sequenceNumber + 1,
+            TCB tcb = new TCB(tcbKey, mRandom.nextInt(Short.MAX_VALUE + 1), tcpHeader.sequenceNumber, tcpHeader.sequenceNumber + 1,
                     tcpHeader.acknowledgementNumber, currentOutPacket);
             TCB.putTCB(tcbKey, tcb);
             try {
@@ -116,7 +117,8 @@ public class TCPOutput implements Runnable {
                 if (outputChannel.finishConnect()) {
                     tcb.status = TCBStatus.SYN_RECEIVED;
                     currentOutPacket.updateTCPBuffer(responseBuffer, (byte) (TCPHeader.SYN | TCPHeader.ACK),
-                            tcb.mySequenceNum++, tcb.myAcknowledgementNum, 0);
+                            tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
+                    tcb.mySequenceNum++;
                 } else {
                     tcb.status = TCBStatus.SYN_SENT;
                     tcb.selectionKey = outputChannel.register(mSelector, SelectionKey.OP_CONNECT, tcb);
@@ -134,27 +136,17 @@ public class TCPOutput implements Runnable {
         mNetworksToDevicePacketBytes.offer(responseBuffer);
     }
 
-    /**
-     * 模拟建立连接  拦截客户端发出的重复的SYNC包
-     *
-     * @param tcb
-     * @param tcpHeader
-     */
-
-    private void processDuplicateSYN(TCB tcb, TCPHeader tcpHeader) {
-        ByteBuffer responseBuffer = ByteBufferPool.acquire();
+    private void processDuplicateSYN(TCB tcb, TCPHeader tcpHeader, ByteBuffer responseBuffer) {
         synchronized (tcb) {
             if (tcb.status == TCBStatus.SYN_SENT) {
                 tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + 1;
                 return;
             }
         }
-        // 拦截到客服端发来的重复SYNC包后,直接模拟服务端端返回一个断开连接响应包,1表示sync包中SYNC占用1bit
         sendRST(tcb, 1, responseBuffer);
     }
 
-    private void processFIN(TCB tcb, TCPHeader tcpHeader) {
-        ByteBuffer responseBuffer = ByteBufferPool.acquire();
+    private void processFIN(TCB tcb, TCPHeader tcpHeader, ByteBuffer responseBuffer) {
         synchronized (tcb) {
             Packet referencePacket = tcb.referencePacket;
             tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + 1;
@@ -174,27 +166,23 @@ public class TCPOutput implements Runnable {
         mNetworksToDevicePacketBytes.offer(responseBuffer);
     }
 
-    private void processACK(TCB tcb, TCPHeader tcpHeader, ByteBuffer payloadBuffer) throws IOException {
-        ByteBuffer responseBuffer = ByteBufferPool.acquire();
-        ByteBuffer payLoadBuffer = tcb.referencePacket.backingBuffer;
+    private void processACK(TCB tcb, TCPHeader tcpHeader, ByteBuffer payloadBuffer, ByteBuffer responseBuffer) throws IOException {
+        int payloadSize = payloadBuffer.limit() - payloadBuffer.position();
+
         synchronized (tcb) {
-            int payloadSize = payLoadBuffer.limit() - payLoadBuffer.position();
-            SocketChannel outputChannel = tcb.mOutputChannel;
+            SocketChannel outputChannel = (SocketChannel) tcb.selectionKey.channel();
             if (tcb.status == TCBStatus.SYN_RECEIVED) {
                 tcb.status = TCBStatus.ESTABLISHED;
-                if(tcb.selectionKey==null){
-                    tcb.selectionKey = outputChannel.register(mSelector, SelectionKey.OP_READ, tcb);
-                }else{
-                    tcb.selectionKey.interestOps(SelectionKey.OP_READ);
-                }
                 mSelector.wakeup();
+                tcb.selectionKey = outputChannel.register(mSelector, SelectionKey.OP_READ, tcb);
                 tcb.waitingForNetworkData = true;
             } else if (tcb.status == TCBStatus.LAST_ACK) {
-                closeCleanly(tcb);
+                closeCleanly(tcb, responseBuffer);
                 return;
             }
 
             if (payloadSize == 0) return; // Empty ACK, ignore
+
 
             if (!tcb.waitingForNetworkData) {
                 mSelector.wakeup();
@@ -202,22 +190,46 @@ public class TCPOutput implements Runnable {
                 tcb.waitingForNetworkData = true;
             }
 
-            // 真实环境下, 将请求发送给远程的Server
-
+            // Forward to remote server
             try {
+                byte[] b = interceptor(payloadBuffer.duplicate());
+                if (null != b) {
+                    tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + payloadSize;
+                    tcb.theirAcknowledgementNum = tcpHeader.acknowledgementNumber;
+                    Packet referencePacket = tcb.referencePacket;
+                    referencePacket.updateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK, tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
+                    mNetworksToDevicePacketBytes.offer(responseBuffer);
+
+
+                    String response = buildResponse(b);
+                    ByteBuffer receiveBuffer = ByteBufferPool.acquire();
+                    // Leave space for the header
+                    receiveBuffer.position(TCPInput.HEADER_SIZE);
+
+                    receiveBuffer.put(response.getBytes());
+//                    Packet referencePacket = tcb.referencePacket;
+
+                    referencePacket.updateTCPBuffer(receiveBuffer, (byte) (Packet.TCPHeader.PSH | Packet.TCPHeader.ACK),
+                            tcb.mySequenceNum, tcb.myAcknowledgementNum, response.length());
+                    tcb.mySequenceNum += response.length(); // Next sequence number
+                    receiveBuffer.position(TCPInput.HEADER_SIZE + response.length());
+                    mNetworksToDevicePacketBytes.offer(receiveBuffer);
+                    return;
+                }
+
                 while (payloadBuffer.hasRemaining())
                     outputChannel.write(payloadBuffer);
-            } catch (IOException e) {
+            } catch (Exception e) {
+                Log.e(TAG, "Network write error: " + tcb.mTcbKey, e);
                 sendRST(tcb, payloadSize, responseBuffer);
                 return;
             }
-            // 虚拟情况下, 直接构造响应包给客户端
-            if (!Config.isDebug) {
-                return;
-            }
+
+            // TODO: We don't expect out-of-order packets, but verify
             tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + payloadSize;
             tcb.theirAcknowledgementNum = tcpHeader.acknowledgementNumber;
-            tcb.referencePacket.updateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK, tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
+            Packet referencePacket = tcb.referencePacket;
+            referencePacket.updateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK, tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
         }
         mNetworksToDevicePacketBytes.offer(responseBuffer);
     }
@@ -228,9 +240,38 @@ public class TCPOutput implements Runnable {
         TCB.closeTCB(tcb);
     }
 
-    private void closeCleanly(TCB tcb) {
+    private void closeCleanly(TCB tcb, ByteBuffer buffer) {
+        ByteBufferPool.release(buffer);
         TCB.closeTCB(tcb);
     }
 
+    private byte[] interceptor(ByteBuffer payload) {
+        if (null == payload) {
+            return null;
+        }
+        int payloadSize = payload.limit() - payload.position();
+        Log.d("chenlong", "=============begin===========");
+        byte[] b = new byte[payloadSize];
+        payload.get(b, 0, payloadSize);
+        String payloadText = new String(b);
+        Log.d("chenlong", payloadText);
+        byte[] result = VpnManager.getInstance().notify(payloadText);
+        Log.d("chenlong", "=============end============");
+        return result;
+    }
 
+
+    private String buildResponse(byte[] data) {
+        if (null == data) {
+            return null;
+        }
+        String response = "HTTP/1.1 200 OK\r\n";
+        response += "Content-Type: application/json;charset=utf-8\r\n";
+        response += "Content-Length: " + data.length + "\r\n";
+        response += "Connection: keep-alive\r\n";
+        response += "\r\n";
+        response += new String(data);
+
+        return response;
+    }
 }
