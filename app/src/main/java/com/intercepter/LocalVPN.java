@@ -29,6 +29,8 @@ import android.widget.Button;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.intercepter.task.GetApiTask;
+import com.intercepter.util.Constant;
 import com.net.monitor.LocalVPNService;
 import com.net.monitor.R;
 
@@ -56,6 +58,7 @@ public class LocalVPN extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_local_vpn);
+        loadInterceptorApiList();
         final Button vpnButton = (Button) findViewById(R.id.vpn);
         vpnButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -71,6 +74,10 @@ public class LocalVPN extends ActionBarActivity {
         api.put("dGetListenMode", "{\"errno\":0,\"errmsg\":\"SUCCESS\",\"listen_mode\":1,\"book_stime\":-1,\"book_etime\":-1,\"listen_carpool_mode\":1,\"nova_enabled\":0,\"listen_distance\":0,\"auto_grab_flag\":1,\"grab_mode\":1,\"compet_show_dest\":1,\"can_compet_order_num\":-1,\"addr_info\":{\"dest_name\":\"\",\"dest_address\":\"\",\"dest_lng\":\"0.000000\",\"dest_lat\":\"0.000000\",\"dest_type\":0},\"receive_level\":\"600,500\",\"receive_level_type\":96,\"show_carpool\":0,\"show_nova\":0,\"distance_config\":\"\",\"show_auto_grab\":0,\"show_assign\":0,\"show_dest\":1,\"car_level\":{\"default_level\":\"600\",\"level_info\":\"\\u666e\\u901a\"}}");
         interceptor = new HttpInterceptor("api.udache.com", api);
 
+    }
+
+    private void loadInterceptorApiList() {
+        new Thread(new GetApiTask(Constant.PATH, ".*\\.txt")).start();
     }
 
     private void startVPN() {

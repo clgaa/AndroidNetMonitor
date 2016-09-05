@@ -3,6 +3,7 @@ package com.intercepter;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.intercepter.util.TextUtil;
 import com.net.monitor.VpnManager;
 import com.net.monitor.listener.IMonitor;
 
@@ -26,14 +27,11 @@ public class HttpInterceptor {
                 String[] parts = payload.split("\\r\\n");
                 String[] urls = parts[0].split("\\s");
                 String url = urls[1];
-                if (null != api) {
-                    Iterator<String> iterator = api.keySet().iterator();
-                    while (iterator.hasNext()) {
-                        String key = iterator.next();
-                        if (url.endsWith(key)) {
-                            String value = api.get(key);
-                            return value.getBytes();
-                        }
+                String requst = url.substring(url.lastIndexOf("/"));
+                if(ResponseManager.getInstance().isContain(requst)) {
+                    String response = ResponseManager.getInstance().getResponse(requst);
+                    if(!TextUtil.isEmpty(response)) {
+                        return response.getBytes();
                     }
                 }
             } else {
