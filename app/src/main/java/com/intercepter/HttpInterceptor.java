@@ -27,7 +27,7 @@ public class HttpInterceptor {
                 String[] parts = payload.split("\\r\\n");
                 String[] urls = parts[0].split("\\s");
                 String url = urls[1];
-                String requst = url.substring(url.lastIndexOf("/"));
+                String requst = url.substring(url.lastIndexOf("/") + 1);
                 if(ResponseManager.getInstance().isContain(requst)) {
                     String response = ResponseManager.getInstance().getResponse(requst);
                     if(!TextUtil.isEmpty(response)) {

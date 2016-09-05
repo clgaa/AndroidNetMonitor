@@ -1,8 +1,10 @@
 package com.intercepter;
 
 import com.intercepter.util.Constant;
+import com.intercepter.util.TextUtil;
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ResponseManager {
     private static ConcurrentHashMap<String, String> sResponse = new ConcurrentHashMap<>();
-    private static final int BSIZE = 5 * 1024;
+    private static final int BSIZE = 1 * 1024;
 
     private ResponseManager() {
 
@@ -35,7 +37,7 @@ public class ResponseManager {
             return null;
         }
         String response = sResponse.get(api);
-        if(null != response) {
+        if(!TextUtil.isEmpty(response)) {
             return response;
         }
         return getFromSD(api);
@@ -43,16 +45,32 @@ public class ResponseManager {
 
     private synchronized String getFromSD(String api) {
         String path = Constant.PATH + api + ".txt";
+        FileChannel fc = null;
         try {
-            FileChannel fc = new FileInputStream(path).getChannel();
+            fc = new FileInputStream(path).getChannel();
             ByteBuffer buff = ByteBuffer.allocate(BSIZE);
-            fc.read(buff);
-            buff.flip();
-            String response = buff.asCharBuffer().toString();
+            String response = "";
+            while (fc.read(buff) != -1) {
+                buff.flip();
+                int payloasSize = buff.limit() - buff.position();
+                byte[] data = new byte[payloasSize];
+                buff.get(data, 0, payloasSize);
+                response += new String(data);
+                buff.clear();
+            }
+
             sResponse.put(api, response);
             return response;
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if(null != fc) {
+                try {
+                    fc.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
         return null;
     }
