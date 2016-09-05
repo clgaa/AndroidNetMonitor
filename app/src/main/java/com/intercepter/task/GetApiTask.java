@@ -20,7 +20,7 @@ public class GetApiTask implements Runnable{
         String[] list = DirList.getApi(path, regx);
         if(null != list) {
             for(String item : list) {
-                ResponseManager.getInstance().getCache().put(item, null);
+                ResponseManager.getInstance().getCache().put(item, "");
             }
         }
     }

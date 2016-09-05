@@ -77,7 +77,7 @@ public class TCPInput implements Runnable {
         TCB tcb = (TCB) key.attachment();
         Packet referencePacket = tcb.referencePacket;
         try {
-            if (((SocketChannel) tcb.selectionKey.channel()).finishConnect()) {
+            if (tcb.socketChannel.finishConnect()) {
                 keyIterator.remove();
                 tcb.status = TCBStatus.SYN_RECEIVED;
                 ByteBuffer responseBuffer = ByteBufferPool.acquire();

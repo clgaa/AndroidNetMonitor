@@ -19,6 +19,7 @@ package com.net.monitor;
 import android.util.Log;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -103,6 +104,8 @@ public class TCPOutput implements Runnable {
         TCPHeader tcpHeader = currentOutPacket.tcpHeader;
         IP4Header ip4Header = currentOutPacket.ip4Header;
 
+        InetAddress destinationAddress =  ip4Header.destinationAddress;
+        int destinationPort = tcpHeader.destinationPort;
         currentOutPacket.swapSourceAndDestination();
         if (tcpHeader.isSYN()) {
             SocketChannel outputChannel = SocketChannel.open();
@@ -110,10 +113,10 @@ public class TCPOutput implements Runnable {
             mVpnService.protect(outputChannel.socket());
             //模拟一个ack&syn包
             TCB tcb = new TCB(tcbKey, mRandom.nextInt(Short.MAX_VALUE + 1), tcpHeader.sequenceNumber, tcpHeader.sequenceNumber + 1,
-                    tcpHeader.acknowledgementNumber, currentOutPacket);
+                    tcpHeader.acknowledgementNumber, outputChannel, currentOutPacket);
             TCB.putTCB(tcbKey, tcb);
             try {
-                outputChannel.connect(new InetSocketAddress(ip4Header.destinationAddress, tcpHeader.destinationPort));
+                outputChannel.connect(new InetSocketAddress(destinationAddress, destinationPort));
                 if (outputChannel.finishConnect()) {
                     tcb.status = TCBStatus.SYN_RECEIVED;
                     currentOutPacket.updateTCPBuffer(responseBuffer, (byte) (TCPHeader.SYN | TCPHeader.ACK),
@@ -121,8 +124,8 @@ public class TCPOutput implements Runnable {
                     tcb.mySequenceNum++;
                 } else {
                     tcb.status = TCBStatus.SYN_SENT;
-                    tcb.selectionKey = outputChannel.register(mSelector, SelectionKey.OP_CONNECT, tcb);
                     mSelector.wakeup();
+                    tcb.selectionKey = outputChannel.register(mSelector, SelectionKey.OP_CONNECT, tcb);
                     return;
                 }
             } catch (IOException e) {
@@ -170,7 +173,7 @@ public class TCPOutput implements Runnable {
         int payloadSize = payloadBuffer.limit() - payloadBuffer.position();
 
         synchronized (tcb) {
-            SocketChannel outputChannel = (SocketChannel) tcb.selectionKey.channel();
+            SocketChannel outputChannel = tcb.socketChannel;
             if (tcb.status == TCBStatus.SYN_RECEIVED) {
                 tcb.status = TCBStatus.ESTABLISHED;
                 mSelector.wakeup();
